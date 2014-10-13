@@ -13,8 +13,10 @@ sys.setdefaultencoding('utf-8')
 
 
 def help():
-    print 'help'
-    sys.exit()
+    print '-o 选择图片下载目录'
+    print '-n 选择初始线程数量'
+    print '-h 显示帮助'
+    os._exit(0)
 
 
 if __name__ == '__main__':
