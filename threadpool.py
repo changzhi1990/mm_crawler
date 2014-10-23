@@ -9,7 +9,8 @@ import sys
 import time
 
 class Worker(threading.Thread):
-    def __init__(self, workQueue):
+    def __init__(self, workQueue,func):
+        self.func = func
         threading.Thread.__init__(self)
         self.workQueue = workQueue
         self.start()
@@ -18,13 +19,15 @@ class Worker(threading.Thread):
         while True:
             try:
                 args = self.workQueue.get(block=True)
-                download(args)
-            except:
+                self.func(args)
+            except Exception,e:
+                print e
                 break
 
 class WorkerManager:
-    def __init__(self,srclist,path,threadNum=10):
+    def __init__(self,srclist,path,func,threadNum=10):
         self.path = path
+        self.func = func
         self.workQueue = Queue.Queue()
         self.threads = []
         self.initWorkQueue(srclist)
@@ -32,7 +35,7 @@ class WorkerManager:
 
     def initThreadPool(self,threadNum):
         for i in range(threadNum):
-            self.threads.append(Worker(self.workQueue))
+            self.threads.append(Worker(self.workQueue,self.func))
     def initWorkQueue(self,srclist):
         for src in srclist:
             self.addJob((self.path,src))
@@ -44,15 +47,5 @@ class WorkerManager:
         for t in self.threads:
             if t.isAlive():
                 t.join()
-
-def download(args):
-    path = args[0]
-    url = args[1]+'.jpg'
-    name = url.replace('/','_')
-    url = 'http://' + url
-    jpg = urllib2.urlopen(url).read()
-    f = file(path + '/' + name,'w')
-    f.write(jpg)
-    f.close()
 
 
