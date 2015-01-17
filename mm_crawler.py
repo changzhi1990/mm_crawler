@@ -3,14 +3,12 @@
 
 import urllib2
 import re
-import threading
 import os
 import sys
 from threadpool import WorkerManager
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
-
 
 def help():
     print '-o 选择图片下载目录'
@@ -21,9 +19,9 @@ def help():
 #call back function
 #download picture
 def download(args):
-	path = args[0]
-	url = args[1]+'.jpg'
-	name = url.replace('/', '_')
+    path = args[0]
+    url = args[1]+'.jpg'
+    name = url.replace('/', '_')
 	url = 'http://' + url
 	jpg = urllib2.urlopen(url).read()
 	f = file(path + '/' + name, 'w')
@@ -40,7 +38,7 @@ def addWebPage()
     webpagelist = pattern.findall(html)
 """
 
-if __name__ == '__main__':
+def main():
     url = 'http://www.22mm.cc/'
     req = urllib2.Request(url)
     html = urllib2.urlopen(req).read()
@@ -50,26 +48,27 @@ if __name__ == '__main__':
         help()
     except:
         pass
-        
-    path = 'pics'
-    try:
-        i = args.index('-o')
-        path = args[i+1]
-    except:
-        pass
-    if os.path.exists(path):
-        os.rmdir(path)
-    os.mkdir(path)
-    n = 10
-    try:
-        i = args.index('-n')
-        n = args[i+1]
-    except:
-        pass
-        
-    pattern = re.compile(r'src="http://(.*?).jpg"')
-    srclist = pattern.findall(html)
-    workermanager = WorkerManager(srclist,path,download,n)
-    workermanager.waitAllComplete()
+    else:
+        path = 'pics'
+        try:
+            i = args.index('-o')
+            path = args[i+1]
+        except:
+            pass
+        if os.path.exists(path):
+            os.rmdir(path)
+        os.mkdir(path)
+        n = 10
+        try:
+            i = args.index('-n')
+            n = args[i+1]
+        except:
+            pass
 
+        pattern = re.compile(r'src="http://(.*?).jpg"')
+        srclist = pattern.findall(html)
+        workermanager = WorkerManager(srclist,path,download,n)
+        workermanager.waitAllComplete()
 
+if __name__ == '__main__':
+    main()
