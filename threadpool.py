@@ -1,42 +1,32 @@
 #!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# -*- coding:utf-8 -*- 
 
 import sys
 import threading
 import Queue
 import traceback
 
-import pdb
-
-class NoResultPending(Exception):
+class NoResultsPending(Exception):
     pass
 
 class NoWorkersAvailable(Exception):
     pass
+   
 
 def _handle_thread_exception(request, exc_info):
     traceback.print_exception(*exc_info)
 
-def makeRequest(callable_, arg_list, callback=None,
+def makeRequests(callable_, args_list, callback=None,
         exc_callback=_handle_thread_exception):
-    pdb.set_trace()
     requests = []
-    for item in arg_list:
-        if isinstance(item, tuple):
-            requests.append(
-                    WorkRequest(callable_, item[0], item[1], callback=callback,
-                        exc_callback=exc_callback)
-            )
-        else:
-            requests.append(
-                    WorkRequest(callable_, [item], None, callback=callback,
-                        exc_callback=exc_callback)
-            )
-
+    for item in args_list:
+        requests.append(
+                WorkRequest(callable_, [item], None, callback=callback,
+                    exc_callback=exc_callback)
+                )
     return requests
 
 class WorkerThread(threading.Thread):
-
     def __init__(self, requests_queue, results_queue, poll_timeout=5, **kwds):
         threading.Thread.__init__(self, **kwds)
         self.setDaemon(True)
@@ -62,40 +52,29 @@ class WorkerThread(threading.Thread):
                     result = request.callable(*request.args, **request.kwds)
                     self._results_queue.put((request, result))
                 except:
+                    # 标记回调函数中的异常
                     request.exception = True
                     self._results_queue.put((request, sys.exc_info()))
 
     def dismiss(self):
-        """让线程在当前工作完成后退出"""
         self._dismissed.set()
 
-
-class WorkRequest(object):
+  
+class WorkRequest:
 
     def __init__(self, callable_, args=None, kwds=None, requestID=None,
             callback=None, exc_callback=_handle_thread_exception):
-        if requestID is None:
-            self.requestID = id(self)
-        else:
-            try:
-                self.requestID = hash(requestID)
-            except TypeError:
-                raise TypeError("requestID must be hashable")
+        self.requestID = id(self)
         self.exception = False
         self.callback = callback
         self.exc_callback = exc_callback
-        self.callable = callable
+        self.callable = callable_
         self.args = args or []
         self.kwds = kwds or {}
 
-    def __str__(self):
-        return "<WorkRequest id={id} args={args} kwargs={kwargs} exception={exce}>"\
-                .format(id=self.requestID, args=self.args,
-                        kwargs=self.kwds, exce=self.exc_callback)
 
+class ThreadPool:
 
-class ThreadPoll(object):
-    
     def __init__(self, num_workers, q_size=0, resq_size=0, poll_timeout=5):
         self._requests_queue = Queue.Queue(q_size)
         self._results_queue = Queue.Queue(resq_size)
@@ -105,26 +84,23 @@ class ThreadPoll(object):
         self.createWorkers(num_workers, poll_timeout)
 
     def createWorkers(self, num_workers, poll_timeout=5):
-        for i in xrange(num_workers):
+        for i in range(num_workers):
             self.workers.append(WorkerThread(self._requests_queue,
-                self._requests_queue, poll_timeout=poll_timeout))
+                self._results_queue, poll_timeout=poll_timeout))
 
     def dismissWorkers(self, num_workers, do_join=False):
         dismiss_list = []
-        for i in xrange(min(num_workers, len(self.workers))):
+        for i in range(min(num_workers, len(self.workers))):
             worker = self.workers.pop()
             worker.dismiss()
             dismiss_list.append(worker)
-            
         if do_join:
-            for worker in dismiss_list:
-                worker.join()
+            [worker.join() for worker in dismiss_list]
         else:
             self.dismissedWorkers.extend(dismiss_list)
 
     def joinAllDismissedWorkers(self):
-        for worker in self.dismissedWorkers:
-            worker.join()
+        [worker.join() for worker in self.dismissedWorkers]
         self.dismissedWorkers = []
 
     def putRequest(self, request, block=True, timeout=None):
@@ -154,6 +130,6 @@ class ThreadPoll(object):
         while True:
             try:
                 self.poll(True)
-            except NoResultPending:
+            except NoResultsPending:
                 break
 

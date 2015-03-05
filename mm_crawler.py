@@ -7,8 +7,6 @@ import os
 import sys
 import threadpool
 
-import pdb
-
 def help():
     print '-o 选择图片下载目录'
     print '-n 选择初始线程数量'
@@ -17,60 +15,55 @@ def help():
 
 #call back function
 #download picture
-def download(args):
-    path = args[0]
-    url = args[1]+'.jpg'
+def download(url):
+    global path
+    url = url + '.jpg'
     name = url.replace('/', '_')
     url = 'http://' + url
-    jpg = urllib2.urlopen(url).read()
-    f = file(path + '/' + name, 'w')
-    f.write(jpg)
-    f.close()
-
-#call back function
-#add new web page
-"""
-def addWebPage()
-	pattern = re.compile(r'href="/mm/(.*?)/"')
-    webpagelist = pattern.findall(html)
-"""
+    print url
+    try:
+        jpg = urllib2.urlopen(url).read()
+        f = file(path + '/' + name, 'w')
+        f.write(jpg)
+        f.close()
+    except Exception, e:
+        print e
+ 
 
 def main():
-    url = 'http://www.22mm.cc/'
-    req = urllib2.Request(url)
-    html = urllib2.urlopen(req).read()
     args = sys.argv
     n = 10
-    path = 'pics'
+    global path
     try:
         args.index('-h')
         help()
     except:
         pass
-    else:
-        path = 'pics'
-        try:
-            i = args.index('-o')
-            path = args[i+1]
-        except:
-            pass
-        if os.path.exists(path):
-            os.rmdir(path)
-        os.mkdir(path)
-        n = 10
-        try:
-            i = args.index('-n')
-            n = args[i+1]
-        except:
-            pass
+    try:
+        i = args.index('-o')
+        path = args[i+1]
+    except:
+        pass
+    n = 10
+    try:
+        i = args.index('-n')
+        n = args[i+1]
+    except:
+        pass
+    if os.path.exists(path):
+        os.system('rm -rf {path}'.format(path=path))
+    os.mkdir(path)
+    url = 'http://www.22mm.cc/'
+    req = urllib2.Request(url)
+    html = urllib2.urlopen(req).read()
     pattern = re.compile(r'src="http://(.*?).jpg"')
     srclist = pattern.findall(html)
-    request = threadpool.makeRequest(download, srclist)
-    pdb.set_trace()
-    tp = threadpool.ThreadPoll(n)
-    for req in request:
-        tp.putRequest(req)
+    request = threadpool.makeRequests(download, srclist)
+    tp = threadpool.ThreadPool(n)
+    [tp.putRequest(req) for req in request]
     tp.wait()
 
+
+path = 'pics'
 if __name__ == '__main__':
     main()
