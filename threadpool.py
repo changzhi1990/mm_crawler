@@ -27,6 +27,7 @@ def makeRequests(callable_, args_list, callback=None,
     return requests
 
 class WorkerThread(threading.Thread):
+    
     def __init__(self, requests_queue, results_queue, poll_timeout=5, **kwds):
         threading.Thread.__init__(self, **kwds)
         self.setDaemon(True)
@@ -49,6 +50,7 @@ class WorkerThread(threading.Thread):
                     self._requests_queue.put(request)
                     break
                 try:
+                    # 在此处执行回调函数，并且返回执行的结果
                     result = request.callable(*request.args, **request.kwds)
                     self._results_queue.put((request, result))
                 except:
