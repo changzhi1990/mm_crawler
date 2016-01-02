@@ -9,8 +9,10 @@ import multiprocessing
 from multiprocessing import Queue
 from eventlet.green import urllib2
 
-url_queue = Queue(maxsize=500)
-img_queue = Queue(maxsize=100)
+url_queue = Queue(maxsize=200)
+url_set = set() # hash list
+img_queue = Queue(maxsize=400)
+img_set = set() # hash list
 path = 'pics'
 
 
@@ -27,14 +29,21 @@ class HrefProcess(multiprocessing.Process):
 
     def _breadth_search(self, url):
         try:
-            print 'breadth searching: %s' % url
             html = urllib2.urlopen(url).read()
             hrefpattern = re.compile(r'<a\shref="/mm/(.*?)"')
             hrefs = hrefpattern.findall(html)
-            [url_queue.put('http://22mm.xiuna.com/mm/%s' % href) for href in hrefs]
+            for href in hrefs:
+                if href in url_set:
+                    continue
+                url_set.add(href)
+                url_queue.put('http://22mm.xiuna.com/mm/%s' % href)
             imgpattern = re.compile(r'src="http://22mm-img.xiuna.com/pic/(.*?).jpg"')
             imgs = imgpattern.findall(html)
-            [img_queue.put('http://22mm-img.xiuna.com/pic/%s.jpg' % img) for img in imgs]
+            for img in imgs:
+                if img in img_set:
+                    continue
+                img_set.add(img)
+                img_queue.put('http://22mm-img.xiuna.com/pic/%s.jpg' % img)
         except Exception, e:
             print e
 
@@ -51,10 +60,8 @@ class ImgProcess(multiprocessing.Process):
 
     def _get_img(self, url):
         try:
-            print 'get img %s' % url
             name = url[30:]
             name = name.replace('/', '_')
-            print 'get img: %s' % url
             jpg = urllib2.urlopen(url).read()
             f = file(path + '/' + name, 'w')
             f.write(jpg)
@@ -83,6 +90,7 @@ def main():
     img_p.daemon = True
     img_p.start()
     href_p.join()
+    img_p.join()
 
 if __name__ == '__main__':
     main()
