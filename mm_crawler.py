@@ -4,20 +4,14 @@
 import re
 import os
 import sys
-import Queue
 import eventlet
 import multiprocessing
+from multiprocessing import Queue
 from eventlet.green import urllib2
 
-url_queue = Queue.Queue(maxsize=50)
-img_queue = Queue.Queue(maxsize=100)
+url_queue = Queue(maxsize=500)
+img_queue = Queue(maxsize=100)
 path = 'pics'
-
-def help():
-    print '-o 选择图片下载目录'
-    print '-n 选择初始线程数量'
-    print '-h 显示帮助'
-    sys.exit(0)
 
 
 class HrefProcess(multiprocessing.Process):
@@ -26,20 +20,19 @@ class HrefProcess(multiprocessing.Process):
         self.pool = eventlet.GreenPool()
 
     def run(self):
-        print 'href process...'
         while True:
             url = url_queue.get(block=True)
-            self.pool.spawn_n(self._deep_search, url)
+            self.pool.spawn_n(self._breadth_search, url)
             self.pool.waitall()
 
-    def _deep_search(self, url):
+    def _breadth_search(self, url):
         try:
-            print 'deep searching: %s' % url
+            print 'breadth searching: %s' % url
             html = urllib2.urlopen(url).read()
             hrefpattern = re.compile(r'<a\shref="/mm/(.*?)"')
             hrefs = hrefpattern.findall(html)
-            [url_queue.put('http://22mm.xiuna.com/mm/%s' % url) for href in hrefs]
-            imgpattern = re.compile(r'src\s"http://22mm-img.xiuna.com/pic/(.*?).jpg"')
+            [url_queue.put('http://22mm.xiuna.com/mm/%s' % href) for href in hrefs]
+            imgpattern = re.compile(r'src="http://22mm-img.xiuna.com/pic/(.*?).jpg"')
             imgs = imgpattern.findall(html)
             [img_queue.put('http://22mm-img.xiuna.com/pic/%s.jpg' % img) for img in imgs]
         except Exception, e:
@@ -51,7 +44,6 @@ class ImgProcess(multiprocessing.Process):
         self.pool = eventlet.GreenPool()
 
     def run(self):
-        print 'img process...'
         while True:
             img_url = img_queue.get(block=True)
             self.pool.spawn_n(self._get_img, img_url)
@@ -59,6 +51,7 @@ class ImgProcess(multiprocessing.Process):
 
     def _get_img(self, url):
         try:
+            print 'get img %s' % url
             name = url[30:]
             name = name.replace('/', '_')
             print 'get img: %s' % url
@@ -72,22 +65,10 @@ class ImgProcess(multiprocessing.Process):
     
 def main():
     args = sys.argv
-    n = 10
     global path
-    try:
-        args.index('-h')
-        help()
-    except:
-        pass
     try:
         i = args.index('-o')
         path = args[i+1]
-    except:
-        pass
-    n = 10
-    try:
-        i = args.index('-n')
-        n = args[i+1]
     except:
         pass
     if os.path.exists(path):
@@ -102,7 +83,6 @@ def main():
     img_p.daemon = True
     img_p.start()
     href_p.join()
-    img_p.join()
 
 if __name__ == '__main__':
     main()
