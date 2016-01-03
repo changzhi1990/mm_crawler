@@ -4,7 +4,6 @@
 import re
 import os
 import sys
-import eventlet
 import multiprocessing
 import urllib2
 from multiprocessing import Queue
@@ -12,17 +11,17 @@ from multiprocessing.dummy import Pool as ThreadPool
 
 
 url_queue = Queue(maxsize=200)
-url_set = set()  # hash list
 img_queue = Queue(maxsize=400)
-img_set = set()  # hash list
-HREF_THREAD_NUM = 10
-IMG_THREAD_NUM = 20
+HREF_THREAD_NUM = 20
+IMG_THREAD_NUM = 40
 path = 'pics'
 
 
 class HrefProcess(multiprocessing.Process):
     def __init__(self):
         super(HrefProcess, self).__init__()
+        self.url_set = set()  # hash list
+        self.img_set = set()  # hash list
 
     def run(self):
         self.pool = ThreadPool(HREF_THREAD_NUM)
@@ -37,17 +36,17 @@ class HrefProcess(multiprocessing.Process):
                 hrefpattern = re.compile(r'<a\shref="/mm/(.*?)"')
                 hrefs = hrefpattern.findall(html)
                 for href in hrefs:
-                    if href in url_set:
+                    if href in self.url_set:
                         continue
-                    url_set.add(href)
+                    self.url_set.add(href)
                     url_queue.put('http://22mm.xiuna.com/mm/%s' % href)
                 r_str = r'src="http://22mm-img.xiuna.com/pic/(.*?).jpg"'
                 imgpattern = re.compile(r_str)
                 imgs = imgpattern.findall(html)
                 for img in imgs:
-                    if img in img_set:
+                    if img in self.img_set:
                         continue
-                    img_set.add(img)
+                    self.img_set.add(img)
                     img_queue.put('http://22mm-img.xiuna.com/pic/%s.jpg' % img)
             except urllib2.HTTPError as he:
                 print '_bread_search %s' % url
