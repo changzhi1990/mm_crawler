@@ -36,8 +36,10 @@ HrefProcess 为广度搜索进程，进程内部是线程池处理页面和url�
 
 ImgProcess 为图片下载进程，进程内部是线程池进行图片下载和保存，默认为40个线程
 
+用set()模拟hashtable，set()是线程不安全，读写时加锁互斥
+
 ## 缺陷
 通过测试，性能主要是受限于客户端带宽
 
-在HrefProcess内部通过一个set()模拟hashtable来进行url是否重复的判断，所以会导致占
-用内存很高，由于是I/O密集型，CPU负载很低
+在HrefProcess内部通过一个set()内存中模拟hashtable来进行url是否重复的判断，所以会
+导致占用内存很高，由于是I/O密集型，CPU负载很低

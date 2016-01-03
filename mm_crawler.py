@@ -8,6 +8,8 @@ import multiprocessing
 import urllib2
 from docopt import docopt
 from multiprocessing import Queue
+from multiprocessing import Lock
+from multiprocessing.dummy import Lock
 from multiprocessing.dummy import Pool as ThreadPool
 
 __doc__ = """mm_crawler
@@ -36,6 +38,8 @@ class HrefProcess(multiprocessing.Process):
         self.href_tnum = href_tnum
         self.url_set = set()  # hash list
         self.img_set = set()  # hash list
+        self.url_set_mutex = Lock()
+        self.img_set_mutex = Lock()
 
     def run(self):
         self.pool = ThreadPool(self.href_tnum)
@@ -52,15 +56,21 @@ class HrefProcess(multiprocessing.Process):
                 html = urllib2.urlopen(url).read()
                 hrefs = hrefpattern.findall(html)
                 for href in hrefs:
+                    self.url_set_mutex.acquire()
                     if href in self.url_set:
+                        self.url_set_mutex.release()
                         continue
                     self.url_set.add(href)
+                    self.url_set_mutex.release()
                     url_queue.put('http://22mm.xiuna.com/mm/%s' % href)
                 imgs = imgpattern.findall(html)
                 for img in imgs:
+                    self.img_set_mutex.acquire()
                     if img in self.img_set:
+                        self.img_set_mutex.release()
                         continue
                     self.img_set.add(img)
+                    self.img_set_mutex.release()
                     img_queue.put('http://22mm-img.xiuna.com/pic/%s.jpg' % img)
             except urllib2.HTTPError as he:
                 print he, '_bread_search %s' % url
