@@ -1,6 +1,6 @@
 # mm_crawler
 
-简单的Python爬虫爬取(http://www.22mm.cc/)上的美女图片
+简单的Python爬虫爬取 (http://www.22mm.cc/) 上的美女图片
 
 ## 使用
 
